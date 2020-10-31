@@ -9,7 +9,7 @@ contract('Dist', ([alice, bob, carol, dave, erin, owner]) => {
         this.lp0 = await MockERC20.new("CHOCO_USDT", "LP0", "1000", "0", {from: owner});
         this.lp1 = await MockERC20.new("VNLA_USDT", "LP1", "1000", "0", {from: owner});
         this.lp2 = await MockERC20.new("DAI_USDT", "LP2", "1000", "0", {from: owner});
-        
+        this.lp3 = await MockERC20.new("XYZ_USDT", "LP3", "1000", "0", {from: owner});
     });
 
     it('should set correct state variables', async () => {

@@ -1,6 +1,5 @@
 pragma solidity 0.6.12;
 
-
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
@@ -14,13 +13,16 @@ contract ChocoPresale is Ownable, ReentrancyGuard {
     uint256 private _totalSupply;
     mapping (address => uint256) private _balances;
 
-    uint256 public phaseIQ = 800e21;
-    uint256 public phaseIIQ = 2675e21;
+    uint256 public phaseIQ = 800e22;
+    uint256 public phaseIIQ = 2675e22;
     uint256 public phaseIR = 8000;
     uint256 public phaseIIR = 6250;
 
-    uint256 public duration = 2 weeks;
+    uint256 public duration = 4 weeks;
     uint256 public preSaleStart = uint256(-1);
+
+    address payable public ethReceiver = 0xDaBB2Fa102B48b4bC94746df6eF4e55324B7927f;
+
     event OnEtherReceived(address indexed user, uint256 etherAmt, uint256 tokenAmt);
     /**
      * @dev Sets the values for {name} and {symbol}, initializes {decimals} with
@@ -88,12 +90,11 @@ contract ChocoPresale is Ownable, ReentrancyGuard {
         preSaleStart = _startTime;
     }
     
-    function withdraw() public onlyOwner {
-        address payable receiver = msg.sender;
-        receiver.transfer(address(this).balance);
+    function withdraw() public {
+        ethReceiver.transfer(address(this).balance);
     }
-
-    fallback () external payable nonReentrant {
+    
+    receive () external payable nonReentrant {
         onEtherReceived();
     }
 
@@ -103,7 +104,7 @@ contract ChocoPresale is Ownable, ReentrancyGuard {
         if (now_ < preSaleStart) {
             return 0;
         }
-        if (now_ > preSaleStart.add(2 * duration)) {
+        if (now_ > preSaleStart.add(2 * duration) || _totalSupply >= phaseIIQ) {
             return 3;
         }
         return _totalSupply >= phaseIQ || now_ > preSaleStart.add(duration) ? 2 : 1;
@@ -129,8 +130,9 @@ contract ChocoPresale is Ownable, ReentrancyGuard {
                 msg.sender.transfer(receivedEther);
                 
             }
-            
         }
+        // forward ether to etherReceiver
+        ethReceiver.transfer(receivedEther);
         _totalSupply = _totalSupply.add(amount);
         // update buyer's balance
         _balances[buyer] = _balances[buyer].add(amount);

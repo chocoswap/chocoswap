@@ -144,7 +144,7 @@ contract VNLADistribution is Ownable {
         if (bn < startBlock || bn > endBlock) {
             return 0;
         } else {
-            uint256 factor = bn.sub(bn).div(startBlock);
+            uint256 factor = bn.sub(startBlock).div(halvedBlock);
             factor = factor <= 8 ? 2 ** (8 - factor) : 1;
             return factor.mul(vnlaPerBlock);
         }
