@@ -1,0 +1,8 @@
+/node_modules/
+/build/
+/package.
+/truffle-config-test.js
+/docs
+/config_*
+/single
+/address.json
