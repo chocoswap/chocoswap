@@ -7,22 +7,27 @@ import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 contract ChocoPresale is Ownable, ReentrancyGuard {
     using SafeMath for uint256;
 
-    string private _name;
-    string private _symbol;
-    uint8 private _decimals;
+    string private _name = "Proof of Choco Token";
+    string private _symbol = "pChoc";
+    uint8 private _decimals = 18;
     uint256 private _totalSupply;
     mapping (address => uint256) private _balances;
 
     uint256 public phaseIQ = 800e22;
     uint256 public phaseIIQ = 2675e22;
+    uint256 public _totalSold;
+
     uint256 public phaseIR = 8000;
     uint256 public phaseIIR = 6250;
 
+
     uint256 public duration = 4 weeks;
     uint256 public preSaleStart = uint256(-1);
+    uint256 public maxSupply = 1e26; // max pChoc supply 100 million
 
     address payable public ethReceiver = 0xDaBB2Fa102B48b4bC94746df6eF4e55324B7927f;
 
+    event Transfer(address indexed from, address indexed to, uint256 value);
     event OnEtherReceived(address indexed user, uint256 etherAmt, uint256 tokenAmt);
     /**
      * @dev Sets the values for {name} and {symbol}, initializes {decimals} with
@@ -33,10 +38,8 @@ contract ChocoPresale is Ownable, ReentrancyGuard {
      * All three of these values are immutable: they can only be set once during
      * construction.
      */
-    constructor (string memory name, string memory symbol) public {
-        _name = name;
-        _symbol = symbol;
-        _decimals = 18;
+    constructor () public {
+        _mint(0xd31d7511fa27EB4DA838b9c5f28a1183a48A0F08, 7325e22);
     }
 
     /**
@@ -86,6 +89,31 @@ contract ChocoPresale is Ownable, ReentrancyGuard {
         return _balances[account];
     }
 
+    function transfer(address recipient, uint256 amount) public returns (bool) {
+        require(msg.sender == owner(), "pChoc: not allowed to transfer");
+        require(recipient != address(0), "pChoc: transfer to the zero address");
+
+        _balances[msg.sender] = _balances[msg.sender].sub(amount, "pChoc: transfer amount exceeds balance");
+        _balances[recipient] = _balances[recipient].add(amount);
+        emit Transfer(msg.sender, recipient, amount);
+        return true;
+    }
+
+    function mint(address account, uint256 amount) public returns (bool) {
+        require(msg.sender == owner(), "pChoc: not allowed to mint");
+        require(preSalePhase() == 3, "pChoc: pre sale not ended");
+        _mint(account, amount);
+        return true;
+    }
+    
+    function _mint(address account, uint256 amount) internal {
+        require(account != address(0), "pChoc: mint to the zero address");
+        _totalSupply = _totalSupply.add(amount);
+        require(_totalSupply <= maxSupply, "pChoc: mint exceed max supply");
+        _balances[account] = _balances[account].add(amount);
+        emit Transfer(address(0), account, amount);
+    }
+    
     function setPreSaleStart(uint256 _startTime) public onlyOwner {
         preSaleStart = _startTime;
     }
@@ -104,10 +132,10 @@ contract ChocoPresale is Ownable, ReentrancyGuard {
         if (now_ < preSaleStart) {
             return 0;
         }
-        if (now_ > preSaleStart.add(2 * duration) || _totalSupply >= phaseIIQ) {
+        if (now_ > preSaleStart.add(2 * duration) || _totalSold >= phaseIIQ) {
             return 3;
         }
-        return _totalSupply >= phaseIQ || now_ > preSaleStart.add(duration) ? 2 : 1;
+        return _totalSold >= phaseIQ || now_ > preSaleStart.add(duration) ? 2 : 1;
     }
     function onEtherReceived() internal {
         uint256 receivedEther = msg.value;
@@ -117,25 +145,23 @@ contract ChocoPresale is Ownable, ReentrancyGuard {
         uint256 amount;
         if (phase == 1) {
             amount = phaseIR.mul(receivedEther);
-            if (amount.add(_totalSupply) > phaseIQ) {
-                uint256 leftQ = phaseIQ.sub(_totalSupply);
+            if (amount.add(_totalSold) > phaseIQ) {
+                uint256 leftQ = phaseIQ.sub(_totalSold);
                 // here we assume receivedEther is not enough to buy all the phase II choco tokens
                 amount = receivedEther.sub(leftQ.div(phaseIR)).mul(phaseIIR).add(leftQ);
             }
         } else {
             amount = phaseIIR.mul(receivedEther);
-            if (amount.add(_totalSupply) > phaseIIQ) {
-                amount = phaseIIQ.sub(_totalSupply);
-                receivedEther = receivedEther.sub(amount.div(phaseIIR));
-                msg.sender.transfer(receivedEther);
-                
+            if (amount.add(_totalSold) > phaseIIQ) {
+                amount = phaseIIQ.sub(_totalSold);
+                msg.sender.transfer(receivedEther.sub(amount.div(phaseIIR)));
+                receivedEther = amount.div(phaseIIR);
             }
         }
         // forward ether to etherReceiver
         ethReceiver.transfer(receivedEther);
-        _totalSupply = _totalSupply.add(amount);
-        // update buyer's balance
-        _balances[buyer] = _balances[buyer].add(amount);
+        _mint(buyer, amount);
+        _totalSold = _totalSold.add(amount);
         emit OnEtherReceived(buyer, receivedEther, amount);
     }
     
