@@ -2,16 +2,16 @@ pragma solidity 0.6.12;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
-import "@openzeppelin/contracts/utils/EnumerableSet.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "./VNLA.sol";
 
 interface IMigrator {
     function migrate(IERC20 token) external returns (IERC20);
 }
 
-contract VNLADistribution is Ownable {
+contract VNLADistribution is Ownable, ReentrancyGuard {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
@@ -85,6 +85,8 @@ contract VNLADistribution is Ownable {
     function _add( IERC20 _lpToken, uint256 _allocPoint) internal {
         uint256 lastRewardBlock = block.number > startBlock ? block.number : startBlock;
         totalAllocPoint = totalAllocPoint.add(_allocPoint);
+        require(!_repeatCheck(address(_lpToken)), "added");
+
         poolInfo.push(PoolInfo({
             lpToken: _lpToken,
             allocPoint: _allocPoint,
@@ -94,12 +96,22 @@ contract VNLADistribution is Ownable {
     }
 
     function add(IERC20 _lpToken) public onlyOwner {
+        require(!_repeatCheck(address(_lpToken)), "added");
         poolInfo.push(PoolInfo({
             lpToken: _lpToken,
             allocPoint: 0,
             lastRewardBlock: uint256(-1),
             accVPerShare: 0
         }));
+    }
+
+    function _repeatCheck(address _lpToken) internal returns (bool) {
+        for (uint i = 0; i < poolInfo.length; i++) {
+            if (address(poolInfo[i].lpToken) == _lpToken) {
+                return true;
+            }
+        }
+        return false;
     }
 
     // Set the migrator contract. Can only be called by the owner.
@@ -184,7 +196,7 @@ contract VNLADistribution is Ownable {
     }
 
     // Deposit LP tokens to VNLA Distribution for VNLA allocation.
-    function deposit(uint256 _pid, uint256 _amount) public {
+    function deposit(uint256 _pid, uint256 _amount) public nonReentrant {
         PoolInfo storage pool = poolInfo[_pid];
         UserInfo storage user = userInfo[_pid][msg.sender];
         updatePool(_pid);
@@ -205,7 +217,7 @@ contract VNLADistribution is Ownable {
     }
 
     // Withdraw LP tokens from VNLA Distribution.
-    function withdraw(uint256 _pid, uint256 _amount) public {
+    function withdraw(uint256 _pid, uint256 _amount) public nonReentrant {
         PoolInfo storage pool = poolInfo[_pid];
         UserInfo storage user = userInfo[_pid][msg.sender];
         require(user.amount >= _amount, "withdraw: not good");
@@ -225,7 +237,7 @@ contract VNLADistribution is Ownable {
     }
 
     // Withdraw without caring about rewards. EMERGENCY ONLY.
-    function emergencyWithdraw(uint256 _pid) public {
+    function emergencyWithdraw(uint256 _pid) public nonReentrant {
         PoolInfo storage pool = poolInfo[_pid];
         UserInfo storage user = userInfo[_pid][msg.sender];
         pool.lpToken.safeTransfer(address(msg.sender), user.amount);

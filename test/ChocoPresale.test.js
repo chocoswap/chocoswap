@@ -3,17 +3,18 @@ const expectEvent = require('@openzeppelin/test-helpers/src/expectEvent');
 const Choco = artifacts.require('ChocoToken');
 const ChocoPresale = artifacts.require('ChocoPresale');
 
-contract('Presale', ([alice, bob, carol, psaddr, devaddr, tmaddr, owner, deployer]) => {
+contract('Presale', ([alice, bob, carol, market, dev, team, partner, other, deployer, owner]) => {
     beforeEach(async () => {
-        this.choco = await Choco.new(psaddr, devaddr, tmaddr, { from: deployer });
+        this.choco = await Choco.new(market, dev, team, partner, other, { from: deployer });
         
     });
     
     it('should set correct state variables', async () => {
-        assert.equal((await this.choco.balanceOf(psaddr)).toString(),   '1000000000000000000000000')
-        assert.equal((await this.choco.balanceOf(devaddr)).toString(),  '1000000000000000000000000')
-        assert.equal((await this.choco.balanceOf(tmaddr)).toString(),   '8000000000000000000000000')
-        // console.log( web3.eth.abi.encodeParameters(['string', 'string'], ["Choco PreSale Token", 'CPT']))
+        assert.equal((await this.choco.balanceOf(market)).toString(),   '2100000000000000000000000')
+        assert.equal((await this.choco.balanceOf(dev)).toString(),  '2100000000000000000000000')
+        assert.equal((await this.choco.balanceOf(team)).toString(),   '2100000000000000000000000')
+        assert.equal((await this.choco.balanceOf(partner)).toString(),   '630000000000000000000000')
+        assert.equal((await this.choco.balanceOf(other)).toString(),   '14070000000000000000000000')
     });
 
     it('should allow owner and only owner to set presale start time', async () => {
