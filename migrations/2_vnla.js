@@ -8,11 +8,31 @@ const erc20_2 = artifacts.require("MockERC20.sol");
 const VNLA = artifacts.require("VNLAToken.sol");
 const VNLADistribution = artifacts.require("VNLADistribution.sol");
 
-
+const toWei = web3.utils.toWei
 
 module.exports = async function (deployer, network, accounts) {
+    if (false){
+        const fs = require('fs');
+        const path = require("path");
+        let config = { PRE_ADDRESS: "", DEV_ADDRESS: "", TM_ADDRESS: "" };
+        if (fs.existsSync(path.join(__dirname, "../config.js"))) {
+            config = require("../config.js");
+        }
+        console.log("market  address = ", config.MARKET)
+        console.log("dev     address = ", config.DEV)
+        console.log("team    address = ", config.TEAM)
+        console.log("partner address = ", config.PARTNER)
+        console.log("other   address = ", config.OTHER)
+        await deployer.deploy(ChocoToken, 
+            config.MARKET, 
+            config.DEV, 
+            config.TEAM, 
+            config.PARTNER,
+            config.OTHER,
+            { from: accounts[0] });
 
-    //   return 
+    }
+     
     console.log('accounts[0] = ', accounts[0])
     console.log('network = ', network)
     let lp0, lp1, lp2, vnla;
@@ -65,13 +85,12 @@ module.exports = async function (deployer, network, accounts) {
     console.log('bk num', bknum.number)
     let curBk = new BN(bknum.number);
     curBk = curBk.add(new BN('1000'))
-    await deployer.deploy(VNLADistribution, vnla.address, '4359654017857142', curBk, [lp0.address, lp1.address, lp2.address], [4, 3, 2], { from: accounts[0] })
+    await deployer.deploy(VNLADistribution, vnla.address, '363304501488095238', curBk, [lp0.address, lp1.address], [3, 2], { from: accounts[0] })
     const vnlaDist = await VNLADistribution.deployed();
-    await vnla.transferOwnership(vnlaDist.address, { from: accounts[0] });
+    await vnla.mint(vnlaDist.address, toWei('7500000', 'ether'), { from: accounts[0] });
 
     console.log("lp0.address     = ", lp0.address);
     console.log("lp1.address     = ", lp1.address);
-    console.log("lp2.address     = ", lp2.address);
 
     console.log("vnla.address     = ", vnla.address)
     console.log("vnlaDist.address = ", vnlaDist.address)

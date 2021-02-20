@@ -189,7 +189,6 @@ contract VNLADistribution is Ownable, ReentrancyGuard {
         uint256 multiplier = getMultiplier(pool.lastRewardBlock, block.number);
         uint256 vnlaReward = multiplier.mul(vnlaPerBlock).mul(pool.allocPoint).div(totalAllocPoint);
         if (vnlaReward != 0) {
-            vnla.mint(address(this), vnlaReward);
             pool.accVPerShare = pool.accVPerShare.add(vnlaReward.mul(1e18).div(lpSupply));
             pool.lastRewardBlock = block.number;
         }
