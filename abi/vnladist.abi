@@ -329,6 +329,11 @@
 				"internalType": "uint256",
 				"name": "accVPerShare",
 				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "lpSupply",
+				"type": "uint256"
 			}
 		],
 		"stateMutability": "view",

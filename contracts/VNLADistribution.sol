@@ -38,6 +38,7 @@ contract VNLADistribution is Ownable, ReentrancyGuard {
         uint256 allocPoint;       // How many allocation points assigned to this pool. VNLAs to distribute per block.
         uint256 lastRewardBlock;  // Last block number that VNLAs distribution occurs.
         uint256 accVPerShare; // Accumulated VNLAs per share, times 1e18. See below.
+        uint256 lpSupply;     // How many lp staking 
     }
 
     // The VNLA TOKEN!
@@ -56,8 +57,8 @@ contract VNLADistribution is Ownable, ReentrancyGuard {
     // The block number when VNLA mining starts.
     uint256 public startBlock;
     uint256 public endBlock;
-    // about 1 week 
-    uint256 public halvedBlock = 40320; 
+    // about 1 week  heco : 201600  eth: 40320
+    uint256 public halvedBlock = 201600; 
 
 
     event Deposit(address indexed user, uint256 indexed pid, uint256 amount);
@@ -91,7 +92,8 @@ contract VNLADistribution is Ownable, ReentrancyGuard {
             lpToken: _lpToken,
             allocPoint: _allocPoint,
             lastRewardBlock: lastRewardBlock,
-            accVPerShare: 0
+            accVPerShare: 0,
+            lpSupply: 0
         }));
     }
 
@@ -101,7 +103,8 @@ contract VNLADistribution is Ownable, ReentrancyGuard {
             lpToken: _lpToken,
             allocPoint: 0,
             lastRewardBlock: uint256(-1),
-            accVPerShare: 0
+            accVPerShare: 0,
+            lpSupply: 0
         }));
     }
 
@@ -166,7 +169,9 @@ contract VNLADistribution is Ownable, ReentrancyGuard {
         PoolInfo storage pool = poolInfo[_pid];
         UserInfo storage user = userInfo[_pid][_user];
         uint256 accVPerShare = pool.accVPerShare;
-        uint256 lpSupply = pool.lpToken.balanceOf(address(this));
+        // uint256 lpSupply = pool.lpToken.balanceOf(address(this));
+        uint256 lpSupply = pool.lpSupply;
+
         if (block.number > pool.lastRewardBlock && lpSupply != 0) {
             uint256 multiplier = getMultiplier(pool.lastRewardBlock, block.number);
             uint256 vnlaReward = multiplier.mul(vnlaPerBlock).mul(pool.allocPoint).div(totalAllocPoint);
@@ -181,7 +186,8 @@ contract VNLADistribution is Ownable, ReentrancyGuard {
         if (block.number <= pool.lastRewardBlock) {
             return;
         }
-        uint256 lpSupply = pool.lpToken.balanceOf(address(this));
+        // uint256 lpSupply = pool.lpToken.balanceOf(address(this));
+        uint256 lpSupply = pool.lpSupply;
         if (lpSupply == 0) {
             pool.lastRewardBlock = block.number;
             return;
@@ -208,6 +214,7 @@ contract VNLADistribution is Ownable, ReentrancyGuard {
         if(_amount > 0) {
             pool.lpToken.safeTransferFrom(address(msg.sender), address(this), _amount);
             user.amount = user.amount.add(_amount);
+            pool.lpSupply = pool.lpSupply.add(_amount);
         }
         if (pool.accVPerShare != 0) {
             user.rewardDebt = user.amount.mul(pool.accVPerShare).div(1e18);
@@ -228,6 +235,7 @@ contract VNLADistribution is Ownable, ReentrancyGuard {
         if(_amount > 0) {
             user.amount = user.amount.sub(_amount);
             pool.lpToken.safeTransfer(address(msg.sender), _amount);
+            pool.lpSupply = pool.lpSupply.sub(_amount);
         }
         if (pool.accVPerShare != 0) {
             user.rewardDebt = user.amount.mul(pool.accVPerShare).div(1e18);
